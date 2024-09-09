@@ -49,9 +49,9 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
     "`include_holidays` must be a logical TRUE or FALSE."
     = is.logical(include_holidays))
 
-##CREATE DATE RANGE FOR THE SEARCH FROM INPUTS
+### CREATE DATE RANGES: FROM INPUT PARAMS AND FROM DATA FILES AVALIABLE
 
-  # convert parameters to Date class and create a range of dates
+  # convert input parameters to Date class and create a range of dates
   from <- as.IDate(from)
   if (! is.null(to)) {
     to <- as.IDate(to)
@@ -66,16 +66,16 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
                           full.names = TRUE, pattern = pattern)
   csv_files <- list.files("data/raw_data/reportes_dia",
                           full.names = TRUE, pattern = pattern)
-  # load holiday dates
+  # read holidays data.table
   aux_dir <- "data/aux_data/" # path to file with holiday dates
   dt_holidays <- fread(file = paste0(aux_dir,
                                      "dias_festivos_colombia_1984-2024.csv"))
   hd <- dt_holidays[, fecha_str]
 
-  # Select file type to search from input
+  # Select file type to search from input paramater
   ifelse(type == "csv", file_type <- csv_files, file_type <- rds_files)
 
-  # Create a vector of dates from available files, format class IDate
+  # Create a vector of dates from available files, format to class IDate
   pattern <- ".*([0-9]{4})([0-9]{2})([0-9]{2}).*"
   file_dates <- sapply(file_type, \(x) as.IDate(gsub(pattern,
                                                      "\\1-\\2-\\3", x)))
@@ -90,12 +90,14 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
   begin_rng <- as.character(as.IDate(files_begin))
   end_rng <- as.character(as.IDate(files_end))
   cat("\n", num_files_available, "available files found in valid range:",
-      "[", begin_rng, ":", end_rng, "]" , "\n")
+      "[", begin_rng, ":", end_rng, "]", "\n")
 
   # Check if user's date range fits in valid range
   is_valid_range <- all(range %in% valid_range)
   stopifnot("Some dates in range are out of bounds! Use only dates inside the valid range."
-             = is_valid_range)
+            = is_valid_range)
+
+### FILTER USER'S RANGE WITH IMPUTS PARAMETERS
 
   # Filter dates by day of the week
   if (!is.null(day_num) && day_num > 0) {
@@ -113,9 +115,10 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
   if (isFALSE(include_holidays)) {
     range <- setdiff(range, hd)
   }
-# Hopefully we got a valid clean and filterd range to search for
+  # Hopefully we got a valid, clean and filterd range to search for
 
-## CREATE DATE RANGE FROM THE FILES AVAILABLE
+### FIND DATES IN USER RANGE MATCHING AGAINST AVAILABLE FILES
+
   dates_found <- intersect(file_dates, range)
   # create a continuos complete range including missing files
   dates_start <- as.IDate(min(file_dates))
@@ -127,13 +130,16 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
   num_missing_dates <- length(missing_dates)
   rng_begin <- as.character(as.IDate(from))
   rng_end <- as.character(as.IDate(to))
+
+  # Tell user about missing files
   msg <- "Missing dates for range:"
   cat(num_missing_dates, msg, "[", rng_begin, ":", rng_end, "]", "\n")
   if (num_missing_dates > 0) {
-  cat("Missing dates:\n")
-  print(as.IDate(missing_dates))
+    cat("Missing dates:\n")
+    print(as.IDate(missing_dates))
   }
 
+  # Tell user about files found
   num_files_found <- length(dates_found)
   cat(num_files_found, "Files found for range", "[",
       rng_begin, "->", rng_end, "]","\n")
