@@ -118,13 +118,6 @@ bind_logs <- function(dt, path) {
 
 }
 
-
-clean_parada_raw <- function(dt) {
-  dt[, id_parada := gsub("^\\(([0-9]+)\\) ?.*", "\\1", parada)]
-  dt[, cenefa := gsub(".*([0-9]{3}[A-Z][0-9]{2}).*", "\\1", parada)]
-}
-
-
 #' Clean columns linea, ruta, parada and operador
 clean_cols <- function(dt) {
   regex <- "\\(.*\\) +|^\\(.*\\)$|/"
