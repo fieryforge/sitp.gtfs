@@ -15,14 +15,15 @@ download_data <- function() {
 
   html <- "data/raw_data/csv_downloads/index.html"
   index_html <- base::readLines(html, warn = FALSE)
-  find_url <- grep(".*https.*[0-9](\\.zip|\\.csv).*", index_html, value = TRUE)
+  find_url <- grep(".*https.*[0-9]{8}(\\.zip|\\.csv).*", index_html, value = TRUE)
 
   # mind the single double quote in pattern
   files_url <- sub('.*(https.*(\\.zip|\\.csv))".*', "\\1", find_url)
   file_names <- sub(".*(validacionZonal.*(zip|csv)).*", "\\1", files_url)
 
   # check if files have been already downloaded
-  local_files <- basename(list.files("data/raw_data/reportes_dia", pattern = "(csv|zip)"))
+  local_files <- basename(list.files("data/raw_data/reportes_dia",
+                                     pattern = "(csv|zip)"))
   files_to_download <- setdiff(file_names, local_files)
   # If files  available for download, ask user to proceed with the download
   if (length(files_to_download) > 0) {
@@ -37,7 +38,7 @@ download_data <- function() {
       }
     } else if (answer == "n" || answer == "no") {
       stop("No files downloaded.")
-    } else{
+    } else {
       stop("Please answer with a `y` or `n`.")
     }
   } else {
