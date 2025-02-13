@@ -1,7 +1,7 @@
 #' Clean raw csv data files
 #'
 #' @description
-#' 'clean_csv_files' cleans up the values from columns with various problems that
+#' 'clean_csv_files' cleans up the values of columns with various problems that
 #' make them difficult to handle. For example, ID codes in parentheses mixed
 #' with character strings or dirty characters such as '/' or unnesesary
 #' empty spaces. 'clean_csv_files' also selects relevant columns and sets
@@ -41,8 +41,6 @@ clean_csv_files <- function(path) {
     return(NULL)
     }
   }
-
-
 
   started_at <- proc.time()
 
@@ -118,33 +116,103 @@ bind_logs <- function(dt, path) {
 
 }
 
-#' Clean columns linea, ruta, parada and operador
-clean_cols <- function(dt) {
-  regex <- "\\(.*\\) +|^\\(.*\\)$|/"
-  c_rgx <- "([0-9]{3}[A-Z][0-9]{2}).*"
-  m_rgx <- ".*(Portal|Estaci.*) ([[:alnum:]]+) .*"
+clean_ruta <- function(dt) {
+  idx <- strip_raw_ruta(dt)
+  idx <- idx[, .(ruta_raw, id, ruta_clean)]
 
-  dt[, `:=`(
-    linea = {
-      l <- gsub(regex, "", linea)
-      l <- gsub("(\\w) \\w.*", "\\1", l)
-      l <- gsub("^$", NA, l)
-    },
-    ruta = {
-      r <- gsub(regex, "", ruta)
-      r <- gsub("(.*)[ _][0-9]{8}[ _](.*)", "\\1_\\2", r)
-      r <- gsub("^$", NA, r)
-    },
-    parada = {
-      ep <- gsub(regex, "", parada)
-      ep <- gsub(c_rgx, "\\1", ep)
-      ep <- gsub(m_rgx, "\\1 \\2", ep)
-      ep <- gsub("^$", NA, ep)
-    },
-    operador = gsub(regex, "", operador)
-  )]
+  setkey(idx, ruta_raw)
+  setkey(dt, ruta)
+  dt <- idx[dt]
+  dt[, ruta_raw := NULL]
+  setnames(dt, old = c("id", "ruta_clean"), new = c("id.ruta", "ruta"))
+
+  ## save to file
+  fecha <- dt[1, fecha]
+  file <- paste0("data/aux_data/rutas/dict_rutas-", fecha, ".csv")
+  fwrite(dt, file, append = TRUE )
+
+  return(dt)
 }
 
+strip_raw_ruta <- function(dt) {
+  rutas <- dt[, .(ruta_raw = unique(ruta))]
+
+  id_rgx <- "(\\(.*\\))[ _]?(.*)"
+  trid_rgx <- "^([[:alnum:]-]+)[ _ ].*"
+
+  ## fix duplicated id codes without a name
+  d <- rutas[, .(id = gsub(id_rgx, "\\1", ruta_raw), r = ruta_raw)][duplicated(id), id]
+  if (length(d) > 0) {
+    rutas[, id := gsub(id_rgx, "\\1", ruta_raw)]
+    rutas[, ruta_raw := if (.N > 1) ruta_raw[which.max(nchar(ruta_raw))] else ruta_raw,
+          by = id]
+    rutas <- rutas[, unique(.SD)]
+  }
+
+  rutas[, id := unique(gsub(id_rgx, "\\1", ruta_raw))
+        ][, ruta := gsub(id_rgx, "\\2", ruta_raw) #no parentesis
+          ][, ruta_clean := gsub(trid_rgx, "\\1", ruta) #solo nombre
+            ][, names(rutas) := lapply(.SD,  #no empty str
+                                       \(x) ifelse(x == "", id, x)),]
+
+  ## find recorridos by suffix
+  rutas[, suffix_grp := .GRP, by = ruta_clean
+        ][, ruta_clean := if (.N > 1) {
+                            paste(ruta_clean, letters[seq_len(.N)], sep = "_")
+                          } else {
+                            ruta_clean},
+          by = suffix_grp]
+
+  rutas[, suffix_grp := NULL]
+
+  return(rutas)
+}
+
+#' Clean parada column on raw dt and clean names and id
+clean_parada <- function(dt) {
+  index_paradas <- fread("../sitp/data/aux_data/paradas/index_paradas.csv")
+  #            select = c("longitud","latitud","cenefa", "parada"))
+
+  ## create col id_parada, where the join will take place
+  id_rgx <- "^(\\([0-9]{5}\\)) ?.*"
+  dt[, id.parada := gsub(id_rgx, "\\1", parada)]
+
+  ## work on an isolated dt to do the cleannig
+  dt_cl <- dt[, unique(.SD), .SDcols = c("id.parada", "parada")]
+
+  cenefa_rgx <- ".*([0-9]{3}[A-Z][0-9]{2}).*"
+  nn_rgx <- "^(\\([0-9]{5}\\) )(.*)\\|.*"
+  dt_cl[, cenefa := gsub(cenefa_rgx, "\\1", parada)
+        ][!grepl(cenefa_rgx, cenefa), cenefa := gsub(nn_rgx, "\\2", cenefa)]
+
+    ## fix names for cenefas not found on pz (eg. rows with col nombre == NA
+  m_rgx <- "[^\\|].*\\|([^\\|].*)" ##m_rgx <- "^\\(.*\\|(.*)"
+  dt_cl[, parada := (gsub(m_rgx, "\\1", parada))]
+
+  ## clean Estacion_Parada from leftovers
+  p_rgx <- "[0-9]{3}[A-Z][0-9]{2}[_ \\s]"
+  dt_cl[, parada := (gsub(p_rgx, "", parada))]
+
+
+  dt_cl <- index_paradas[dt_cl, on = "cenefa"]
+  dt_cl[is.na(parada), parada := i.parada]
+  dt_cl[, `:=`(id.parada = NULL, i.parada = NULL)]
+  setnames(dt_cl, "i.id.parada", "id.parada")
+
+  ## join with dt
+  dt <- dt_cl[dt, on = "id.parada"]
+  dt[, i.parada := NULL]
+
+  ## clean \uFFFD char and grab new ones to update dict
+  dt[grepl("\uFFFD", parada), parada := sapply(parada, replace_error)]
+  np_char <- dt[grepl("\uFFFD", parada), .(np_char = parada) ]
+  fwrite(np_char, "../sitp/data/aux_data/paradas/update_dict.csv", append = TRUE)
+
+  setcolorder(dt, c("id.parada", "parada"), before = c("cenefa"))
+
+  return(dt)
+
+}
 
 #' Extract and save rows with timestamps dates not equal to column `fecha`
 #'
