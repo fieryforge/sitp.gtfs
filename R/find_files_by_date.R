@@ -62,12 +62,12 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
 
   # Find files with a date pattern on it's name
   pattern <- ".*([0-9]{4}[0-9]{2}[0-9]{2}).*"
-  rds_files <- list.files("data/processed_data/val_dia",
+  rds_files <- list.files("../sitp/data/processed_data/val_dia",
                           full.names = TRUE, pattern = pattern)
-  csv_files <- list.files("data/raw_data/reportes_dia",
+  csv_files <- list.files("../sitp/data/raw_data/reportes_dia",
                           full.names = TRUE, pattern = pattern)
   # read holidays data.table
-  aux_dir <- "data/aux_data/" # path to file with holiday dates
+  aux_dir <- "../sitp/data/aux_data/" # path to file with holiday dates
   dt_holidays <- fread(file = paste0(aux_dir,
                                      "dias_festivos_colombia_1984-2024.csv"))
   hd <- dt_holidays[, fecha_str]

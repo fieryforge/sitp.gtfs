@@ -15,7 +15,7 @@
 #' @return A data table
 clean_zonal_2023 <- function() {
   ## load csv from TM arcgis to get clean names
-  pz_f <- "../sitp/data/otros_datos/paradas/2025-01/Paraderos_Zonales_del_SITP.csv"
+  pz_f <- "../sitp/data/aux_data/paradas/Paraderos_Zonales_del_SITP.csv"
   pz <- fread(pz_f, select = c("longitud", "latitud",
                                "Y", "X", "nombre", "cenefa" ))
 
@@ -41,9 +41,6 @@ clean_zonal_2023 <- function() {
   ## remove duplicated row
   dt <- dt[, unique(.SD)]
 
-  ## add cenefa suffix for duplicated cenefas with different coordinates
-  dt[, cenefa := if (.N > 1) paste(cenefa, letters[seq_len(.N)], sep = "_") else cenefa, by = cenefa]
-
   ## deal with rows with no cenefa, use part of the name as cenefa
   nn_rgx <- "^(\\([0-9]{5}\\) )(.*)\\|.*"
   dt[!grepl(cenefa_rgx, cenefa), cenefa := gsub(nn_rgx, "\\2", cenefa)]
@@ -59,17 +56,15 @@ clean_zonal_2023 <- function() {
   dt[!is.na(nombre), Estacion_Parada := nombre]
 
   ## fix names for cenefas not found on pz (eg. rows with col nombre == NA
-  m_rgx <- "[^\\|].*\\|([^\\|].*)" ##m_rgx <- "^\\(.*\\|(.*)"
+  m_rgx <- "[^\\|].*\\|([^\\|].*)"
   dt[is.na(nombre), Estacion_Parada := (gsub(m_rgx, "\\1", Estacion_Parada))]
 
-  ## clean Estacion_Parada from leftovers
+  ## clean cenefa string from Estacion_Parada
   p_rgx <- "[0-9]{3}[A-Z][0-9]{2}[_ \\s]"
   dt[is.na(nombre), Estacion_Parada := (gsub(p_rgx, "", Estacion_Parada))]
 
   ## clean \uFFFD char
   dt[grepl("\uFFFD", Estacion_Parada), Estacion_Parada := sapply(Estacion_Parada, replace_error)]
-
-
 
   ## add cenefas in pz not found in dt
   pz_cenefas <- pz[, unique(cenefa)]
@@ -79,6 +74,9 @@ clean_zonal_2023 <- function() {
 
   dt <- rbindlist(list(dt, pz), fill = TRUE)
 
+  ## rm duplicated cenefas
+  dt <- dt[!duplicated(cenefa)]
+
   ## get all names to new parada col
   dt[, parada := ifelse(is.na(Estacion_Parada), nombre, Estacion_Parada)]
   dt[, `:=`(nombre = NULL, Estacion_Parada = NULL)]
@@ -86,7 +84,7 @@ clean_zonal_2023 <- function() {
   ## celan unacceptable chars
   c <- rawToChar(as.raw(c(0xc2, 0xa0)))
   dt[, parada := (gsub(c, "", parada))]
-  dt[, parada := (gsub('[_\\|\\"]', "", parada))]
+  dt[, parada := (gsub('[_\\|\\"]', "", parada))] ## mind the quotes!!!
 
   ## set columns order
   setcolorder(dt, neworder = c("id", "cenefa", "parada", "longitud", "latitud"))
@@ -100,8 +98,9 @@ clean_zonal_2023 <- function() {
 }
 
 
-#' Replace words with unrecognized utf-8 character with valid one
-#' @param error Values from column Estacion_Parada with \uFFFD character
+#' Replace words with unrecognized utf-8 character with a valid one
+#' @param error Values from column Estacion_Parada with uFFFD character
+#'
 replace_error <- function(error) {
   dict_error <- readRDS("../sitp/data/aux_data/paradas/dict_error.rds")
 
