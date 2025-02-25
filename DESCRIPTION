@@ -18,4 +18,6 @@ VignetteBuilder: knitr
 Depends:
     R (>= 4.4.0)
 Imports:
-    data.table
+    data.table,
+    sf
+LazyData: true

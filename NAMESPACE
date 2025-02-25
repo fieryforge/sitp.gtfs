@@ -2,3 +2,6 @@
 
 export(find_files_by_date)
 import(data.table)
+importFrom(sf,st_as_sf)
+importFrom(utils,download.file)
+importFrom(utils,object.size)
