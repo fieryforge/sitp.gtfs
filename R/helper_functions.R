@@ -1,33 +1,156 @@
 #' Load raw data files
 #'
-#' `load_csv` reads a csv raw data file and selects nine columns from it.
+#' `load_raw_data` reads a csv raw data file and selects nine columns from it.
 #' It returns a `data.table` ready for cleanning.
 #'
 #' @param path Path to raw data file to clean.
 #' @return a `data.table` with the relevant columns.
 #'
-load_raw_data <- function(path) {
+load_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL) {
   if (!file.exists(path))
     stop(paste("Required input file does not exist: ", path))
 
   # Select and set types for variables
-  selected_cols <- c("Fecha_Clearing" = "IDate",
-                     "Fecha_Transaccion" = "POSIXct",
-                     "Numero_Tarjeta" = "character",
-                     "Dispositivo" = "character",
-                     "ID_Vehiculo" = "character",
-                     "Linea" = "character",
-                     "Ruta" = "character",
-                     "Estacion_Parada" = "character",
-                     "Operador" = "character")
+  if (is.null(select.cols)) {
+      select.cols <- list("IDate" = "Fecha_Clearing",
+                            "character" = c("Linea", "Ruta", "Estacion_Parada",
+                                            "Dispositivo", "ID_Vehiculo",
+                                            "Operador", "Numero_Tarjeta"),
+                            "POSIXct" = "Fecha_Transaccion"
+                            )
 
-  dt <- fread(file = path, select = selected_cols, showProgress = FALSE)
+      dt.col.names <- c("fecha", "linea", "ruta", "parada", "dispositivo", "bus",
+                     "operador", "tarjeta", "timestamp")
+  }
 
-  # set better names for columns
-  old <- names(selected_cols)
-  new <- c("fecha", "timestamp", "tarjeta", "dispositivo", "bus",
-           "linea", "ruta", "parada", "operador")
-  setnames(dt, old, new)
+  dt <- fread(file = path, select = select.cols, col.names = dt.col.names, showProgress = FALSE)
+
+  return(dt)
+}
+
+
+#' Clean parada column from raw data files
+#'
+#' `clean_parada` takes as input a character vector with unique values from
+#' a raw data file's column parada. It returns a data table with colums to
+#' be join to the data table being processed. Column `parada` replaces with
+#' clean names the column with the same name in the dt being processed.
+#'
+#' @param parada A character vector with unique values from column `parada` of
+#' the data table being processed
+#'
+clean_parada <- function(parada) {
+  dt <- data.table(parada_raw = parada)
+
+  id_rgx <- "^(\\([0-9]+\\))[[:space:]]?.*"
+  cenefa_rgx <- ".*([0-9]{3}[A-Z][0-9]{2}).*"
+  nn_rgx <- "^(.*[)]\\s)(.*)\\|[^|].*" ## exclude second | at the end
+  dt[, cenefa := gsub(cenefa_rgx, "\\1", parada_raw)
+     ][!grepl(cenefa_rgx, cenefa), cenefa := gsub(nn_rgx, "\\2", cenefa)]
+
+  ## join index
+  dt <- index_paradas[dt, on = "cenefa"]
+
+  ## replace id.parada with id from parada raw
+  dt[, id.parada := gsub(id_rgx, "\\1", parada_raw)]
+
+  ## get a clean name for rows with cenefas not found in index
+  m_rgx <- "[^\\|].*\\|[0-9]{3}[A-Z][0-9]{2}[ _](.*)"
+  dt[, parada := ifelse(is.na(parada), gsub(m_rgx, "\\1", parada_raw), parada)]
+
+  ## check for fckd character and upgrade dict_error
+  bad_word <- dt[grepl("\uFFFD", parada), .(parada_bad = parada_raw)]
+  fwrite(bad_word, file = "data-raw/dict_error_new_words.csv", append = TRUE, sep = ",")
+
+  ## TODO Que hacer con las cenefas sin formato, usar id como cenefa?
+
+  ## set the key for the join with DT
+  setkey(dt, parada_raw)
+
+  return(dt)
+
+}
+
+#' Clean columns `ruta` or `linea` from raw data files
+#'
+#' `clean_col` takes as input a character vector with unique values from
+#' a raw data file's columns `ruta` or `linea`. It returns a data table with
+#' colums to be join to the data table being processed. Column `col` replaces
+#' with clean names the correspondent column in the dt being processed.
+#'
+#' @param col A character vector with unique values from columns either `ruta`
+#' or `linea` of the data table being processed.
+#'
+clean_column <- function(col = NULL) {
+  dt <- data.table(col_raw = col)
+
+  ## strip col_raw into id, colum, col_clean
+  id_rgx <- "^(.*[)]{1}) ?(.*)"
+  trid_rgx <- "^ *([[:alnum:]-]+|^5_2)[ _]?.*" ## 5_2 special case
+  dt[, `:=`(id = gsub(id_rgx, "\\1", col_raw),
+            column = gsub(id_rgx, "\\2", col_raw))] ## needed to get clean name
+  dt[, col_clean := gsub(trid_rgx, "\\1", column)] #solo nombre para
+
+  ## case codes in  parentesis with no data, inputed by id and get a name
+  dt[, col_clean := ifelse(.N > 1,
+                           col_clean[which.max(nchar(col_clean))],
+                           col_clean), by = id]
+
+  ## take care of wierd codes in parentesis with no data,
+  ## inpute name with id, not NA, keep them seperate
+  dt[, col_clean := ifelse(col_clean == "", id, col_clean)]
+
+  ## case duplicated col_clean implies multiple versions of the same rta or lna,
+  ## add suffix to col_clean
+  dt[, col_clean := assign_version(dt[, .(col_clean)])]
+
+  ## set the key for the join with DT
+  setkey(dt, "col_raw")
+
+  return(dt[, .(col_raw, id, col_clean)])
+}
+
+#' Assing a suffix to rutas with the same name but different journeys
+#'
+#' This function is called by `clean_column` function and it takes as input
+#' a data table with clean names, posibly duplicated. It outputs
+#' a vector with names with a suffix for duplicated values.
+#' base name.
+#'
+#' @param dt Data table with split names into columns
+#'
+assign_version <- function(dt) {
+  ## find recorridos by suffix
+  dt[, suffix_grp := .GRP, by = col_clean
+     ][, col_clean := if (.N > 1) {
+                        paste(col_clean, letters[seq_len(.N)], sep = "_")
+                      } else {
+                        col_clean
+                      },
+       by = suffix_grp]
+
+  return(dt[, col_clean])
+}
+
+#' Clean `operador` column from raw data files
+#'
+#' `clean_operador` takes as input a character vector with unique values from
+#' a raw data file's column `operador`. It returns a data table with colums to
+#' be join to the data table being processed. Column `op_raw` replaces with
+#' clean names the column with the same name in the dt being processed.
+#'
+#' @param operador A character vector with unique values from column `operador`
+#'
+clean_operador <- function(operador) {
+  dt <- data.table(op_raw = operador)
+
+  rgx <- "^(.*[)]{1}) ?(.*)"
+  dt[, `:=`(id.operador = gsub(rgx, "\\1", operador),
+            operador = sapply(operador, unify_operador))]
+            #operador = gsub(rgx, "\\2", operador))]
+
+  ## set the key for the join with DT
+  setkey(dt, "op_raw")
 
   return(dt)
 }
@@ -58,8 +181,23 @@ save_lost_rows <- function(dt) {
   misplaced_rows <- dt[!inrange(timestamp,
                                       lower = start, upper = end)]
 
-  f_name <- "../sitp/data/processed_data/lost_and_found_timestamps/lost_timestamps.csv"
+  f_name <- "data-raw/lost_timestamps.csv"
   fwrite(misplaced_rows, file = f_name, na = NA, append = TRUE)
+
+}
+
+#' Save clean data table
+#'
+#' Save clean data table to directory: `../data_sets/sitp/clean/`
+#'
+#' @param dt A data table
+#' @param path Path with the original raw file name
+save_clean_dt <- function(dt, path) {
+  ## get file name from path
+  f_name <- gsub("\\.zip", "\\.rds", basename(path))
+  f_name <- paste0("../data_sets/sitp/clean/", f_name)
+
+  saveRDS(dt, f_name)
 
 }
 
@@ -121,11 +259,27 @@ find_lost_timestamps <- function(date) {
   end <- as.POSIXct(date, tz = "UTC", time = 86399)
 
   # read lost_timestamps.csv file
-  file <- "../sitp/data/processed_data/lost_and_found_timestamps/lost_timestamps.csv"
+  file <- "data-raw/lost_timestamps.csv"
   lost_timestamps <- fread(file)
 
   # Find lost rows to bind
   dt <- lost_timestamps[inrange(timestamp, lower = start, upper = end)]
 
   return(dt)
+}
+
+unify_operador <- function(operador) {
+  if (grepl("EMASIVO", operador)) "EMASIVO"
+  else if (grepl("ETIB", operador)) "ETIB"
+  else if (grepl("SUMA", operador)) "SUMA"
+  else if (grepl("GMOVIL", operador)) "GMOVIL"
+  else if (grepl("MASIVO CAPITAL", operador)) "MASIVO CAPITAL"
+  else if (grepl("AMÉRICAS|AMERICAS", operador)) "GRAN AMÉRICAS"
+  else if (grepl("E-SOMOS", operador)) "E-SOMOS"
+  else if (grepl("ESTE ES MI BUS", operador)) "ESTE ES MI BUS"
+  else if (grepl("CONSORCIO EXPRESS", operador)) "CONSORCIO EXPRESS"
+  else if (grepl("ZMO", operador)) "ZMO"
+  else if (grepl("MUEVE", operador)) "MUEVE"
+  else if (grepl("OPERADORA DISTRITAL", operador)) "OPERADORA DISTRITAL"
+  else operador
 }

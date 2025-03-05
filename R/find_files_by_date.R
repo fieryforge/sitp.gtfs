@@ -38,8 +38,8 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
                                day_num = NULL, include_holidays = FALSE) {
   # Check input parameters
   stopifnot(
-    "`type` must be a string: `csv` or `rds` "
-    = is.character(type) && grepl("^csv$|^rds$", type),
+    "`type` must be a string: `raw` or `clean` "
+    = is.character(type) && grepl("^raw$|^clean$", type),
     "`from` must be a string with format `2024-02-11` Year-Month-Day."
     = is.character(from) && grepl("[0-9]{4}-[0-9]{2}-[0-9]{2}", from),
     "`to` must be a string with format `2024-02-11` Y-Month-Day."
@@ -62,9 +62,9 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
 
   # Find files with a date pattern on it's name
   pattern <- ".*([0-9]{4}[0-9]{2}[0-9]{2}).*"
-  rds_files <- list.files("../sitp/data/processed_data/val_dia",
+  rds_files <- list.files("../data_sets/sitp/clean",
                           full.names = TRUE, pattern = pattern)
-  csv_files <- list.files("../sitp/data/raw_data/reportes_dia",
+  csv_files <- list.files("../data_sets/sitp/raw",
                           full.names = TRUE, pattern = pattern)
   # read holidays data.table
   aux_dir <- "../sitp/data/aux_data/" # path to file with holiday dates
@@ -73,7 +73,7 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
   hd <- dt_holidays[, fecha_str]
 
   # Select file type to search from input paramater
-  ifelse(type == "csv", file_type <- csv_files, file_type <- rds_files)
+  ifelse(type == "raw", file_type <- csv_files, file_type <- rds_files)
 
   # Create a vector of dates from available files, format to class IDate
   pattern <- ".*([0-9]{4})([0-9]{2})([0-9]{2}).*"

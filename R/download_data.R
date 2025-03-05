@@ -1,18 +1,20 @@
 #' Download raw data files from the SITP public bus transport system
 #'
-#' This function takes as infput a path to a directory where downloaded files
-#' will be saved. These files contain data from the validation of
-#' users cards once they bord the buses to start a trip. Data includes:
-#' Timestamp, route taken, vehicle id, bus stop id, payment info and more.
+#' @description This function takes as infput a path to a directory where downloaded files
+#' will be saved. The files to download contain data from the validation of
+#' users cards once they bord the buses to start a trip.
+#'
+#' Data includes: Timestamp, route taken, vehicle id, bus stop id, payment info and more.
+#'
 #' Files come in csv format compressed with the zip program.
 #'
-#' @param download_dir Destinatio directory for downloaded files
+#' @param download_dir Destination directory for downloaded files
 #' 
-download_data <- function(download_dir = "data-raw/downloads/") {
-  if (download_dir == "data-raw/downloads/" & !dir.exists(download_dir)) {
+download_data <- function(download_dir = "../data_sets/sitp/raw/") {
+  if (download_dir == "../data_sets/sitp/raw/" & !dir.exists(download_dir)) {
     dir.create(download_dir, recursive = TRUE)
-  } else if (download_dir != "data-raw/downloads/" & !dir.exists(download_dir)) {
-    dir.create(download_dir)
+  } else if (download_dir != "../data_sets/sitp/raw/" & !dir.exists(download_dir)) {
+    dir.create(download_dir, recursive = TRUE)
   }
 
   url="https://storage.googleapis.com/validaciones_tmsa/ValidacionZonal.html"
