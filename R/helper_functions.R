@@ -4,6 +4,9 @@
 #' It returns a `data.table` ready for cleanning.
 #'
 #' @param path Path to raw data file to clean.
+#' @param select.cols Vector of column names to select from raw data file.
+#' @param dt.col.names Vector of column names to assign to the returned data table.
+#'
 #' @return a `data.table` with the relevant columns.
 #'
 load_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL) {
@@ -58,17 +61,30 @@ clean_parada <- function(parada) {
   m_rgx <- "[^\\|].*\\|[0-9]{3}[A-Z][0-9]{2}[ _](.*)"
   dt[, parada := ifelse(is.na(parada), gsub(m_rgx, "\\1", parada_raw), parada)]
 
-  ## check for fckd character and upgrade dict_error
+  ## clean unrecognized char
+  dt[grepl("\uFFFD", parada), parada := sapply(parada, replace_error)]
+
+  ## check for new character error and upgrade dict_error
   bad_word <- dt[grepl("\uFFFD", parada), .(parada_bad = parada_raw)]
   fwrite(bad_word, file = "data-raw/dict_error_new_words.csv", append = TRUE, sep = ",")
-
-  ## TODO Que hacer con las cenefas sin formato, usar id como cenefa?
 
   ## set the key for the join with DT
   setkey(dt, parada_raw)
 
   return(dt)
+}
 
+## replaces words with unrecognized charater with a valid one
+replace_error <- function(error) {
+
+  ## this function must be called by Reduce function
+  replace_bad_char <- function(error, word) {
+    gsub(word, dict_error[[word]], error)
+  }
+
+  good_word <- Reduce(replace_bad_char, names(dict_error), init = error)
+
+  return(good_word)
 }
 
 #' Clean columns `ruta` or `linea` from raw data files
@@ -242,6 +258,7 @@ extract_misplaced_rows <- function(date) {
   # Create dt with timestamps in range
   dt <- dt[inrange(timestamp, lower = start, upper = end)]
 
+  return(dt)
 }
 
 #' Find and bind lost rows by timestamps in col timestamp
@@ -274,12 +291,13 @@ unify_operador <- function(operador) {
   else if (grepl("SUMA", operador)) "SUMA"
   else if (grepl("GMOVIL", operador)) "GMOVIL"
   else if (grepl("MASIVO CAPITAL", operador)) "MASIVO CAPITAL"
-  else if (grepl("AMÉRICAS|AMERICAS", operador)) "GRAN AMÉRICAS"
+  else if (grepl("AM\u00C9RICAS|AMERICAS", operador)) "GRAN AM\u00C9RICAS"
   else if (grepl("E-SOMOS", operador)) "E-SOMOS"
   else if (grepl("ESTE ES MI BUS", operador)) "ESTE ES MI BUS"
   else if (grepl("CONSORCIO EXPRESS", operador)) "CONSORCIO EXPRESS"
   else if (grepl("ZMO", operador)) "ZMO"
   else if (grepl("MUEVE", operador)) "MUEVE"
   else if (grepl("OPERADORA DISTRITAL", operador)) "OPERADORA DISTRITAL"
+  else if (grepl("RECAUDO|Recaudo", operador)) "RECAUDO"
   else operador
 }

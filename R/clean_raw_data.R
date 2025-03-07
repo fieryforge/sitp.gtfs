@@ -17,8 +17,10 @@
 #' Log files directory: `data/aux_data/cleaning_logs/`
 #' lost timestamps dir: `data/processed_data/lost_and_found_timestamps/`
 #'
-#' @param path Path to raw data files in directory:
-#' `data/raw_data/reportes_dia/`
+#' @param path Path to raw data files in directory: `data/raw_data/reportes_dia/`.
+#' @param select.cols Vector with column names to clean from raw data file.
+#' @param dt.col.names Vector with column names to assing to the clean data table.
+#' @param build.idx Logical, if TRUE, build the index, don't clean.
 #'
 #' @return
 #' A data table

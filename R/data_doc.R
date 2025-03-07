@@ -89,3 +89,43 @@
 #'    \item{componente}{A type of service, one of: URBANO, ALIMENTADOR, COMPLEMENTARIO or ESPECIAL}
 #' }
 "bus_fleet"
+
+#' Lineas from all raw data files
+#'
+#' @description A data table with lineas from all raw files checked by `idx_all_raw.R`
+#' @source `data-raw/idx_all_raw.R` file
+#' @format A data table with one variable and 3021 rows
+#' \describe{
+#'      \item{linea}{lineas from all raw data files available}
+#' }
+"idx_linea"
+
+#' Rutas from all raw data files
+#'
+#' @description A data table with rutas from all raw files checked by `idx_all_raw.R`
+#' @source `data-raw/idx_all_raw.R` file
+#' @format A data table with one variable and 3639 rows
+#' \describe{
+#'      \item{ruta}{rutas from all raw data files available}
+#' }
+"idx_ruta"
+
+#' Paradas from all raw data files
+#'
+#' @description A data table with paradas from all raw files checked by `idx_all_raw.R`
+#' @source `data-raw/idx_all_raw.R` file
+#' @format A data table with one variable and 11225 rows
+#' \describe{
+#'      \item{parada}{paradas from all raw data files available}
+#' }
+"idx_parada"
+
+#' Operadores from all raw data files
+#'
+#' @description A data table with operadores from all raw files checked by `idx_all_raw.R`
+#' @source `data-raw/idx_all_raw.R` file
+#' @format A data table with one variable and 24 rows
+#' \describe{
+#'      \item{operador}{operadores from all raw data files available}
+#' }
+"idx_operador"

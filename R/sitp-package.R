@@ -34,4 +34,6 @@ utils::globalVariables(c(".",
                          "parada",
                          "parada_raw",
                          "suffix_grp",
-                         "timestamp"))
+                         "timestamp",
+                         "index_paradas",
+                         "dict_error"))
