@@ -1,0 +1,8 @@
+#' Set global path and url varibles
+#'
+#' @description Set global paths and urls called from functions
+
+## Irectory path storing validaciones día raw data files
+raw.data.dir <- "~/R/data_sets/sitp/validaciones_TM/dia/"
+## url for the raw data files to download
+raw.data.url <- "https://storage.googleapis.com/validaciones_tmsa/ValidacionZonal.html"
