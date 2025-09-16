@@ -8,16 +8,12 @@
 #'
 #' Files come in csv format compressed with the zip program.
 #'
-#' @param download_dir Destination directory for downloaded files
+#' @param output.data.dir Destination directory for downloaded files
 #' 
-download_data <- function(download_dir = "../data_sets/sitp/raw/") {
-  if (download_dir == "../data_sets/sitp/raw/" & !dir.exists(download_dir)) {
-    dir.create(download_dir, recursive = TRUE)
-  } else if (download_dir != "../data_sets/sitp/raw/" & !dir.exists(download_dir)) {
-    dir.create(download_dir, recursive = TRUE)
-  }
+download_raw_data <- function(output.data.dir = raw.data.dir, url = raw.data.url) {
+  if (!dir.exists(output.data.dir))
+    stop("Argument 'output.data.dir' does not exist. Pass a valid dir path to store the files.")
 
-  url="https://storage.googleapis.com/validaciones_tmsa/ValidacionZonal.html"
   index_html <- base::readLines(url, warn = FALSE)
   find_url <- grep(".*https.*[0-9]{8}(\\.zip|\\.csv).*", index_html, value = TRUE)
 
@@ -26,49 +22,30 @@ download_data <- function(download_dir = "../data_sets/sitp/raw/") {
   file_names <- sub(".*(validacionZonal.*(zip|csv)).*", "\\1", files_url)
 
   # check if files have already been downloaded
-  local_files <- basename(list.files(download_dir,
-                                     pattern = "(csv|zip)"))
+  local_files <- basename(list.files(output.data.dir, pattern = "(csv|zip)"))
   files_to_download <- setdiff(file_names, local_files)
 
   ## If files  available for download, ask user to proceed with the download
   if (length(files_to_download) > 0) {
     cat("Files available for download:\n")
     print(files_to_download)
-    instruction <- paste('Enter "all" without the quotes to download all files',
-                         'available or a digit for a single file by index, or',
-                         'a range like "7:10" without the quotes to download',
-                         'multiple files: ')
-    which_files <- readline(prompt = instruction)
-    if (which_files != "all") {
-      i <- as.integer(unlist(strsplit(which_files, split = ":")))
-      if (length(i) > 1) {
-        files_to_download <- files_to_download[c(i[1]:i[2])]
-        message("Files to download: ")
-        print(files_to_download)
-      } else {
-        files_to_download <- files_to_download[i]
-        message("Files to download: ")
-        print(files_to_download)
-      }
-    } else {
-      message(paste(length(files_to_download), " files will be downloaded."))
-    }
-    message(paste("Downloaded files will be saved to directory: ", download_dir))
+    message(paste(length(files_to_download), "files will be downloaded."))
+    message(paste("Downloaded files will be saved to directory: ", output.data.dir))
     answer <- readline(prompt = "Proceed to download the files? (y/n)")
     if (answer == "y" || answer == "yes") {
       for (f in files_to_download) {
         download.file(url = files_url[grepl(f, files_url)],
-                      destfile = paste0(download_dir, f),
+                      destfile = paste0(output.data.dir, f),
                       method = "wget")
       }
-    } else if (answer == "n" || answer == "no") {
-      stop("No files downloaded.")
-    } else {
-      stop("Please answer with a `y` or `n`.")
     }
-  } else {
-    stop("No new files available for download.")
+    else if (answer == "n" || answer == "no")
+      stop("No files downloaded.")
+    else
+      stop("Please answer with a `y` or `n`.")
   }
+  else
+    stop("No new files available for download.")
 
   invisible(NULL)
 }

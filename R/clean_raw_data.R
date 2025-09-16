@@ -34,10 +34,11 @@
 clean_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL, build.idx = FALSE) {
   started_at <- proc.time()
 
-  dt <- load_raw_data(path = path, select.cols = select.cols, dt.col.names = dt.col.names)
+  dt <- load_raw_data(path = path, select.cols = select.cols,
+                      dt.col.names = dt.col.names)
 
   nrow_pre <- nrow(dt)
-  
+
   cat("Loaded file:", basename(path), format(object.size(dt),
                                              units = "Mb"), "\n")
 
@@ -68,10 +69,9 @@ clean_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL, build.
 
   if ("ruta" %in% cols) {
     ruta <- cols_unique[grepl("ruta", names(cols_unique))]
-    col <- clean_column(ruta)
+    col <- clean_ruta(ruta)
     setkey(dt, "ruta")
-    dt <- col[dt][, col_raw := NULL]
-    setnames(dt, old = c("id", "col_clean"), new = c("id.ruta", "ruta"))
+    dt <- col[dt, on = "ruta"]
   }
 
   if ("parada" %in% cols) {
@@ -80,6 +80,8 @@ clean_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL, build.
     setkey(dt, "parada")
     dt <- col[dt][, c("parada_raw", "id") := NULL]
   }
+
+  #dt <- impute_rutas_by_paradas(dt)
 
   ## take care of misplaced timestamps
   if (is.null(select.cols) & is.null(dt.col.names)) save_lost_rows(dt)

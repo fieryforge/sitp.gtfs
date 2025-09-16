@@ -16,14 +16,14 @@ load_raw_data <- function(path, select.cols = NULL, dt.col.names = NULL) {
   # Select and set types for variables
   if (is.null(select.cols)) {
       select.cols <- list("IDate" = "Fecha_Clearing",
-                            "character" = c("Linea", "Ruta", "Estacion_Parada",
-                                            "Dispositivo", "ID_Vehiculo",
-                                            "Operador", "Numero_Tarjeta"),
-                            "POSIXct" = "Fecha_Transaccion"
-                            )
+                          "character" = c("Linea", "Ruta", "Estacion_Parada",
+                                          "Dispositivo", "ID_Vehiculo",
+                                          "Operador", "Numero_Tarjeta"),
+                          "POSIXct" = "Fecha_Transaccion"
+                          )
 
       dt.col.names <- c("fecha", "linea", "ruta", "parada", "dispositivo", "bus",
-                     "operador", "tarjeta", "timestamp")
+                        "operador", "tarjeta", "timestamp")
   }
 
   dt <- fread(file = path, select = select.cols, col.names = dt.col.names, showProgress = FALSE)
@@ -87,6 +87,61 @@ replace_error <- function(error) {
   return(good_word)
 }
 
+clean_ruta <- function(ruta = NULL) {
+  idx <- copy(index_rutas)
+
+  dt <- data.table(ruta_orig = ruta)
+
+  dt <- idx[dt, on = "ruta_orig"]
+
+  no_match <- dt[is.na(ruta)] ## rutas not in index
+  no_match[, id := gsub("^(\\(.*\\)) +.*", "\\1", ruta_orig)]
+  no_match[, rta.nombre := gsub("^(\\(.*\\)) +(.*)", "\\2", ruta_orig)
+           ][, rta.nombre := gsub(" +", "_", rta.nombre)]
+
+  ## new_ruta <- clean_nomatch(no_match, idx)
+
+  ## add new sufix
+  dt <- new_ruta[dt, on = "ruta_orig"]
+  dt[is.na(i.id), `:=`(i.ruta = ruta, i.id = id)]
+  dt[!sapply(sufix.lst, is.null), i.sufix.lst := lapply(seq_along(sufix.lst),
+                                                        \(i) sufix.lst[[i]])]
+
+  ## sufix to character class, not list
+  dt[, sufix.rta := sapply(i.sufix.lst, paste0, collapse = "|")]
+  dt[grepl("^$", sufix.rta), sufix.rta := NA]
+
+  dt[, c("ruta", "sufix.lst", "id", "i.sufix.lst") := NULL]
+  setnames(dt, old = c("ruta_orig", "i.ruta", "i.id"),
+           new = c("ruta", "ruta.cln", "id.rta"))
+  setkey(dt, ruta)
+
+  return(dt)
+}
+
+clean_nomatch <- function(dt, idx) {
+  dt[, ruta_raw := ruta_orig]
+
+  dt[, ruta_raw := gsub("[[:space:]]{2,}", " ", ruta_raw)]   ## remove multiple spaces
+
+  id_rgx <- "^(\\(.*\\)) (.*)" ## split dt columns into ruta_raw, id, ruta
+  dt[, id := gsub(id_rgx, "\\1", ruta_raw)]
+  dt[, ruta := gsub("(\\(.*\\) )([^_ ]+)([_ ].*|$)", "\\2", ruta_raw)]
+  dt[, ruta_raw := NULL]
+
+  dt <- idx[dt, on = "ruta"]
+  dt <- dt[!duplicated(i.id)]
+  dt[, c("ruta_orig", "id", "i.sufix.lst") := NULL]
+  setnames(dt, old = c("i.ruta_orig", "i.id"), new = c("ruta_orig", "id"))
+
+  return(dt)
+}
+
+impute_rutas_by_paradas <- function(dt) {
+  rta_to_impute <- dt[is.na(sufix.rta), unique(ruta)]
+  rta_cnfa <- dt[, .(cnfa = list(unique(cenefa))), by = ruta]
+
+}
 #' Clean columns `ruta` or `linea` from raw data files
 #'
 #' `clean_col` takes as input a character vector with unique values from
@@ -118,7 +173,7 @@ clean_column <- function(col = NULL) {
 
   ## case duplicated col_clean implies multiple versions of the same rta or lna,
   ## add suffix to col_clean
-  dt[, col_clean := assign_version(dt[, .(col_clean)])]
+  ##dt[, col_clean := assign_version(dt[, .(col_clean)])]
 
   ## set the key for the join with DT
   setkey(dt, "col_raw")
@@ -232,7 +287,7 @@ load_clean_data <- function(path) {
 
   date <- dt[1, fecha]
 
-  dt <- extract_misplaced_rows(date)
+  dt <- extract_misplaced_rows(dt, date)
 
   found_rows <- find_lost_timestamps(date)
 
@@ -249,7 +304,7 @@ load_clean_data <- function(path) {
 #'
 #' @param date The date to create the 24 hour range to select rows
 #'
-extract_misplaced_rows <- function(date) {
+extract_misplaced_rows <- function(dt, date) {
 
   # Prepare the valid timestamp range
   start <- as.POSIXct(date, tz = "UTC", time = 0)

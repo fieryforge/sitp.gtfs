@@ -57,6 +57,44 @@
 #' }
 "index_paradas"
 
+
+#' An almost complete set of bus routes of the SITP public bus system
+#'
+#' @description A data set with most of the route's names in raw form mapped to
+#' a clean name found in the official SITP route's data set.
+#'
+#' `index_rutas` is used by `clean_raw_data.R` in order to map route's raw names
+#' to clean route names.
+#'
+#' @source "https://hub.arcgis.com/api/v3/datasets/7fd3d61c4a90448f8a88b29f252be2f1_0/downloads/data?format=shp&spatialRefId=3116&where=1%3D1"
+#'
+#' @format A data table with four variables and 2115 rows:
+#' \describe{
+#'    \item{ruta}{A clean ruta name}
+#'    \item{sufix.lst}{Ruta names with sufix}
+#'    \item{ruta_orig}{Ruta names as found in a raw data file}
+#'    \item{id}{Ruta id code}
+#' }
+"index_rutas"
+
+#' Routes of the SITP published by Tullaveplus
+#'
+#' @description A data set with the route's names in long format with the
+#' list of bus stops by name scraped from the Tullaveplus official website.
+#'
+#' @source "https://www.tullaveplus.gov.co/planea-tu-viaje/frecuencias-y-horarios"
+#'
+#' @format A data table with six variables and 374 rows:
+#' \describe{
+#'    \item{id.linea}{Route id code}
+#'    \item{tipo}{Route type: one of urbano, complementario o especial}
+#'    \item{linea}{line name}
+#'    \item{nombre}{Route names in long format as found in a raw data file}
+#'    \item{destino}{Route origin and destination}
+#'    \item{paradas}{Bus stops address}
+#' }
+"rts_tullave"
+
 #' A dictionary used to clean the Unicode Replacement Character
 #'
 #' @description A dictionary to replace bad encoded words.
