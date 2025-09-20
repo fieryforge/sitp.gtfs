@@ -34,7 +34,7 @@
 #' find_files_by_date(from = "2024-02-11", to = "2024-03-01", day_num = 3)
 #' }
 #'
-find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
+find_files_by_date <- function(type = "raw", from = NULL, to = NULL,
                                day_num = NULL, include_holidays = FALSE) {
   # Check input parameters
   stopifnot(
@@ -62,16 +62,13 @@ find_files_by_date <- function(type = NULL, from = NULL, to = NULL,
 
   # Find files with a date pattern on it's name
   pattern <- ".*([0-9]{4}[0-9]{2}[0-9]{2}).*"
+  csv_files <- list.files(raw.data.dir, full.names = TRUE, pattern = pattern)
+
   rds_files <- list.files("../data_sets/sitp/clean",
                           full.names = TRUE, pattern = pattern)
-  csv_files <- list.files("../data_sets/sitp/raw",
-                          full.names = TRUE, pattern = pattern)
-  # read holidays data.table
-  aux_dir <- "../sitp/data/aux_data/" # path to file with holiday dates
-  dt_holidays <- fread(file = paste0(aux_dir,
-                                     "dias_festivos_colombia_1984-2024.csv"))
-  hd <- dt_holidays[, fecha_str]
 
+  # read holidays data.table
+    hd <- festivos[, as.IDate(date)]
   # Select file type to search from input paramater
   ifelse(type == "raw", file_type <- csv_files, file_type <- rds_files)
 

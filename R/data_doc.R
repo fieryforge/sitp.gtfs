@@ -167,3 +167,19 @@
 #'      \item{operador}{operadores from all raw data files available}
 #' }
 "idx_operador"
+
+#' Historic for holydays in Colombia since 1984
+#'
+#' @description A data table with holydays in Colombia since 1984.
+#' @source `data-raw/festivos.R` file
+#' @format A data table with 7 variables and 756 rows.
+#' \describe{
+#'      \item{date}{Character string with date in format YYYY-MM-DD.}
+#'      \item{year}{The year as integer.}
+#'      \item{month_n}{Months as integer.}
+#'      \item{day_n}{Calendar days as integers}
+#'      \item{month_s}{Month names as character}
+#'      \item{day_s}{Day names as character}
+#'      \item{hoyday}{Holydays name as character}
+#' }
+"festivos"
