@@ -9,7 +9,7 @@ find_files_by_date(
   to = NULL,
   day_num = NULL,
   exclude_holidays = FALSE,
-  val_file_path = "~/R/data_sets/sitp/validaciones_TM/dia/"
+  val_file_path
 )
 }
 \arguments{

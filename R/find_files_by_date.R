@@ -23,8 +23,10 @@
 #' @return A character vector with vallidation file's names.
 find_files_by_date <- function(from, to = NULL, day_num = NULL,
                                exclude_holidays = FALSE,
-                               val_file_path = "~/R/data_sets/sitp/validaciones_TM/dia/") {
+                               val_file_path) {
   stopifnot(
+    "`val_file_path` does not exits or is empty."
+    = dir.exists(val_file_path),
     "`from` must be a string with format `2024-02-11` Year-Month-Day."
     = is.character(from) && grepl("[0-9]{4}-[0-9]{2}-[0-9]{2}", from),
     "`to` must be a string with format `2024-02-11` Y-Month-Day."

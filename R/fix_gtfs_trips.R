@@ -1,7 +1,7 @@
 #' Removes the first or last point that creates a loop in gtfs trips
 #'
 #' Some gtfs trips have errors with duplicated stops, for some reason not yet
-#' known, the last stop of the trip is link to the first stop creating a loop
+#' known, the last stop of the trip is linked to the first stop creating a loop
 #' for some trips. `fix_gtfs_trips()` removes the points that creates those
 #' loops.
 #'
@@ -19,7 +19,7 @@ fix_gtfs_trips <- function(trips) {
 }
 
 remove_trouble_point <- function(st_r) {
-  # Calculate consecutive distances using Method 3
+  # Calculate consecutive distances
   distances <- numeric(nrow(st_r) - 1)
 
   for(i in 1:(nrow(st_r) - 1)) {
@@ -33,14 +33,13 @@ remove_trouble_point <- function(st_r) {
   first_distance <- distances[1]  # Distance between pt1 and pt2
   last_distance <- distances[length(distances)]  #Distance between ptn and ptn-1
 
-  # Apply your removal logic
   if (first_distance > (2 * median_distance)) {
     # Remove point 1
     st_r_clean <- st_r[-1, ]
     message("Removed first point: distance = ",
             first_distance, " > 2 * median = ", 2 * median_distance)
   } else if (last_distance > (2 * median_distance)) {
-    # Remove point 20
+    # Remove point N
     st_r_clean <- st_r[-nrow(st_r), ]
     message("Removed last point: distance = ",
             last_distance, " > 2 * median = ", 2 * median_distance)

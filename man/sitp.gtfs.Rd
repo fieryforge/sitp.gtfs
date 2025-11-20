@@ -11,20 +11,6 @@ Funciones útiles para alaizar las frecuencias de las rutas del SITP a partir
 de los archivos de datos de validaciones de usuarios publicados por la
 empresa Transmilenio.
 }
-\section{Usage}{
-
-Please check the vignettes for more on the package usage:
-\itemize{
-\item Basic usage: reading, analysing, manipulating and writing feeds. Run
-\code{vignette("gtfstools")} or check it on the \href{https://ipeagit.github.io/gtfstools/articles/gtfstools.html}{website}.
-\item Filtering GTFS feeds. Run \code{vignette("filtering", package = "gtfstools")} or
-check it on the \href{https://ipeagit.github.io/gtfstools/articles/filtering.html}{website}.
-\item Validating GTFS feeds. Run \code{vignette("validating", package = "gtfstools")}
-or check it on the
-\href{https://ipeagit.github.io/gtfstools/articles/validating.html}{website}.
-}
-}
-
 \author{
 \strong{Maintainer}: Federico Viviescas Ramírez \email{federicoviviescas@hotmail.com}
 

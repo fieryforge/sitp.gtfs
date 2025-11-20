@@ -11,7 +11,7 @@ fix_gtfs_trips(trips)
 }
 \description{
 Some gtfs trips have errors with duplicated stops, for some reason not yet
-known, the last stop of the trip is link to the first stop creating a loop
+known, the last stop of the trip is linked to the first stop creating a loop
 for some trips. \code{fix_gtfs_trips()} removes the points that creates those
 loops.
 }
