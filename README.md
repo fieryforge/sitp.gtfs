@@ -9,5 +9,8 @@ published on a daily basis and are available for download at: [validacionZonal.z
 with files 'stops.txt', 'routes.txt', 'trips.txt' and 'stop_times.txt'
 
 The geographical data to create the GTFS feed comes from previous feeds
-published by Transmilenio and a are available for download at this link: [TM-GTFS](https://datosabiertos-transmilenio.hub.arcgis.com/search?groupIds=ca6e3d0acf57461d91228659c1b0d2dd&sort=Date%20Updated%7Cmodified%7Cdesc)
+published by Transmilenio and a are available for download at this link:
+[TM-GTFS](https://datosabiertos-transmilenio.hub.arcgis.com/search?groupIds=ca6e3d0acf57461d91228659c1b0d2dd&sort=Date%20Updated%7Cmodified%7Cdesc)
+
+**sitp.gtfs** is still a work in progress and not ready for use yet...
 
