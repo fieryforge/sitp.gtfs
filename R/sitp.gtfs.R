@@ -1,9 +1,8 @@
-#' sitp.gtfs: Herramientas para el análisis de frecuencias de las rutas del
-#' sistema de buses públicos de Bogotá SITP
+#' sitp.gtfs: Tools for frequency analysis of the routes in Bogotá's public bus
+#' system SITP
 #'
-#' Funciones útiles para alaizar las frecuencias de las rutas del SITP a partir
-#' de los archivos de datos de validaciones de usuarios publicados por la
-#' empresa Transmilenio.
+#' Useful functions for analyzing SITP route frequencies from the user
+#' validation data files published by Transmilenio.
 #'
 #' @docType package
 #' @name sitp.gtfs
@@ -12,6 +11,7 @@
 #' @importFrom data.table := .I .SD %chin% .GRP .N rbindlist uniqueN
 #' @importFrom utils globalVariables
 #' @importFrom gtfstools read_gtfs
+#' @importFrom sf st_as_sf st_geometry st_distance
 #' @importFrom osrm osrmRoute
 #' @importFrom leaflet leaflet addTiles addMarkers addPolygons
 #'
