@@ -14,7 +14,9 @@
 #' @return A data.table with colums needed to process all routes in
 #'   the validation file.
 load_val_routes <- function(date, val_file_path) {
-  val_file <- find_files_by_date(from = date)
+  val_file <- find_files_by_date(from = date,
+                                 val_file_path =  val_file_path)
+
   val_file <- file.path(val_file_path, val_file)
   dt <- data.table::fread(file = val_file,
                           select = list("factor"= c("Linea",

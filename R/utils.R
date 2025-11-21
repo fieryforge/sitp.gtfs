@@ -1,87 +1,105 @@
-#' Get unique stops by route
+#' Find validation files by date
 #'
-#' `get_unique_stops_by_route()` returns a list of data.tables with each route
-#' in the validation file as an element.
+#' `find_files_by_date()` returns a character vector of file names that match the
+#' input 'date'.
 #'
-#' @section Column names for each data.tables in the list:
-#' * ruta: Validation file route name.
-#' * parada: Validation file stop name.
-#' * route_short_name: Clean stop name to match against the GTFS file, double
-#'   letter prefix are not split yet.
-#' * stop_code: Clean stop code to match against the GTFS file.
-#' @param raw_data A data.table with route's data from the validation file.
-#' @return A list of data.tables, a data.table for each route.
-get_unique_stops_by_route <- function(raw_dt) {
-  stops_by_route <- raw_dt[, .(parada), by = ruta]
-  unique_rutas <- stops_by_route[, unique(ruta)]
-  stops_by_route <- lapply(
-    X = unique_rutas,
-    FUN = function(r) {
-      dt <- stops_by_route[ruta == r, unique(.SD)]
-      dt[,
-         `:=`(
-           route_short_name = get_short_name(ruta)$route_short_name,
-           stop_code = get_cenefa(parada)
-         )]
+#' @param from A character vector in the format 'YYYY-MM-DD'.
+#' @param to A character vector in the format 'YYYY-MM-DD'.
+#' @param day_num A single digit from 0 to 7 where: 0 = search holidays only,
+#'   1 = Sunday, 2 = Monday ... and 7 = Saturday. Dates are filtered by day of
+#'   the week or if day_num = 0, search for holidays inside the range.
+#' @param exclude_holidays A logical, 'TRUE' exclude holidays from the search.
+#' @param val_file_path A character vector with the path to the directory for
+#'   the validation files.
+#'
+#' @details
+#' This function finds data files based on date ranges created from user input
+#' or a single file if argument 'to' is NULL.
+#'
+#' These ranges can be filtered by day of the week and by holidays.
+#' The function returns a vector of file names for available validation files
+#' found in given date range, or a single file if no range is given.
+#'
+#' @return A character vector with vallidation file's names.
+find_files_by_date <- function(from, to = NULL, day_num = NULL,
+                               exclude_holidays = FALSE,
+                               val_file_path) {
+  stopifnot(
+    "`val_file_path` does not exits or is empty."
+    = dir.exists(val_file_path),
+    "`from` must be a string with format `2024-02-11` Year-Month-Day."
+    = is.character(from) && grepl("[0-9]{4}-[0-9]{2}-[0-9]{2}", from),
+    "`to` must be a string with format `2024-02-11` Y-Month-Day."
+    = is.character(to) && grepl("[0-9]{4}-[0-9]{2}-[0-9]{2}", to) || is.null(to),
+    "`day_num` must be a single digit from 0 to 7: Sunday = 1 ... Saturday = 7."
+    = is.numeric(day_num) && inrange(day_num, 0, 7) || is.null(day_num),
+    "`include_holidays` must be a logical TRUE or FALSE."
+    = is.logical(exclude_holidays)
+  )
+  holydays <- festivos$date
+  if (! is.null(to))
+    range <- seq(data.table::as.IDate(from), data.table::as.IDate(to))
+  else
+    range <- data.table::as.IDate(from) # single file
+  if (! is.null(day_num)) {
+    if (day_num == 0) {
+      stopifnot("No holidays in range. Try a different valid range."
+                = length(intersect(range, holydays)) > 0)
+      exclude_holidays <- FALSE
+      range <- intersect(range, holydays)
     }
-  )
-}
+    else
+      range <- range[wday(range) == day_num]
+  }
+  if (exclude_holidays) # filter holydays
+    range <- setdiff(range, holydays)
 
-#' Select the gtfs files by date
-#'
-#' `gtfs_to_unzip` returns a character vector with GTFS files selected by dates.
-#'
-#' @param date A character string in the 'YYYY-MM-DD' format with the date of the
-#'   validation file to process.
-#' @param gtfs_path A character string with the path to the gtfs files.
-#'
-#' @returns A character vector with GTFS files selected by dates.
-gtfs_to_unzip <- function(date, gtfs_path) {
-  gtfs_zip_files <- list.files(
-    gtfs_path,
-    full.names = TRUE,
-    pattern = "GTFS-[0-9]{4}-[0-9]{2}-[0-9]{2}.zip"
-  )
-  # get date from file name, a vector of all dates available
-  gtfs_dates <- sub(
-    ".*([0-9]{4}-[0-9]{2}-[0-9]{2}).*",
-    "\\1",
-    gtfs_zip_files
-  )
 
-  # There are gtfs files from 2020 up to 2025, we want dates from late 2022 up to
-  # and including the date of the raw file being processed
-  select_dates <- gtfs_dates[
-    gtfs_dates >= "2022-12-15" & gtfs_dates <= date
-  ]
+  # extract date from file names
+  available_files <- list.files(val_file_path, pattern = "[0-9]{8}\\.zip")
+  date_format <- ".*([0-9]{4})([0-9]{2})([0-9]{2}).*"
+  available_dates <- data.table::as.IDate(gsub(date_format, "\\1-\\2-\\3", available_files))
 
-  # paste a regex to filter files
-  date_rgx <- paste0(select_dates, collapse = "|")
+  # message user the total number of available of files
+  # replace with dashes for date format
+  first <- available_dates[1]
+  last <- available_dates[length(available_dates)]
+  message(length(available_files),
+          " total available files in VALID range from ", first, " to ", last, ".")
 
-  # filter files by rgx
-  gtfs_to_unzip <- gtfs_zip_files[grepl(date_rgx, gtfs_zip_files)]
-}
+  # adjust range to avilable files
+  valid_dates <- intersect(available_dates, range)
 
-#' Read GTFS by Date
-#'
-#' Load the gtfs files to match routes against them.
-#'
-#' @param gtfs_zip list of gtfs file paths
-#' @param gtfs_files Character vector with file names to load, e.g. "routes" or "stop_times"
-#'
-#' @return A list of GTFS data.tables
-read_gtfs_by_date <- function(gtfs_zip, gtfs_files) {
-  gtfs_by_date <- lapply(
-    X = gtfs_zip,
-    FUN = \(z) gtfstools::read_gtfs(path = z,
-                                    files =  gtfs_files)
-  )
+  if (length(valid_dates) == 0)
+    stop("No files available for requested range. Try a different VALID range.")
 
-  # format gtfs file names to get the dates
-  names(gtfs_by_date) <- make.names(basename(gtfs_zip))
+  # Cut outsiders, clean range from dates before and after available file dates
+  if (range[1] < available_dates[1]) {
+    message(length(range[range < available_dates[1]]),
+            " requested dates are outside VALID range. Dates before ", available_dates[1], " not available.")
+    range <- range[range >= available_dates[1]] # cut the head
+  }
+  if (range[length(range)] > available_dates[length(available_dates)]) {
+    off_range <- range[range > available_dates[length(available_dates)]]
+    message(length(off_range),
+            " requested dates outside VALID range after. Dates after ",
+            available_dates[length(available_dates)], " not available.")
+    range <- range[range <= available_dates[length(available_dates)]] # cut the tail
+  }
 
-  return(gtfs_by_date)
+  # message missing dates inside VALID range
+  missing_dates <- setdiff(range, available_dates)
+  if (length(missing_dates) > 0) {
+    message(length(missing_dates), " missing dates in requested range ", from, " ", to, ":")
+    print(missing_dates)
+  }
+  else
+    print("No missing files in range.")
 
+  dates_found_rgx <- paste(gsub("-", "", valid_dates), collapse =  "|")
+  files_found <- list.files(val_file_path, pattern = dates_found_rgx)
+  message(length(files_found), " files found for requested date range.")
+  return(files_found)
 }
 
 # format list names to gtfs file names
@@ -203,5 +221,84 @@ plot_route <- function(r1, r2 = NULL) {
          pch = 18, col = "magenta1", cex = 1.2)
   text(x = x1[1], y = y1[1], adj = c(-0.4, 0))
   text(x = x2[1], y = y2[1], adj = c(-0.4, 0))
+
+}
+
+#' Get get_clean_gtfs_shapes
+#'
+#' @description Using the gtfs `stops.txt` file as input, this function returns
+#' a new gtfs `shapes.txt` fixing the errors of the original `shapes.txt` file.
+#'
+#' @return A gtfs `shapes.txt` file.
+get_clean_gtfs_shapes <- function(route_id, trips) {
+  route <- trips[route_id, on = "route_id"]
+  gtfs_file <- route[, gtfs_date]
+  stops <- route[, .(cenefas = unlist(cenefas_gtfs))]
+  stops[, stop_sequence := seq(length(cenefas))]
+
+  stops_and_shape <- stops_to_shape(gtfs_file, stops$cenefas)
+
+  return(stops_and_shape)
+}
+
+stops_to_shape <- function(gtfs_file,
+                           cenefas,
+                           gtfs_path = "../data_sets/sitp/gtfs/") {
+
+  path <- file.path(gtfs_path, gtfs_file)
+  gtfs_stops <- gtfstools::read_gtfs(path = path,
+                                     files = "stops")
+  # for convenience to access the data.table
+
+  gtfs_stops <- gtfs_stops[["stops"]]
+
+  # get the route stops from gtfs
+
+  trip_stops <- gtfs_stops[cenefas, -c("location_type", "parent_station", "zone_id"), on = "stop_code"]
+
+  # data.table to sf object, col geometry
+
+  trip_stops <- sf::st_as_sf(trip_stops,
+                             coords = c("stop_lon", "stop_lat"),
+                             crs = 4686)
+  # get the actual shape of the route
+
+  trip_shape <- osrm::osrmRoute(loc = trip_stops, overview = "full")
+
+  return(list(trip_stops, trip_shape))
+}
+
+map_shape <- function(shape) {
+  m <- leaflet(shape[[2]])
+  m <- addTiles(m)
+  m <- addPolylines(m)
+  p <- leaflet(shape[[1]])
+  p <- addMarkers(p)
+  m <- p
+}
+
+clean_raw_dt <- function(raw_dt) {
+  clean_routes <- get_short_name(unique(raw_dt$ruta))
+  clean_routes[, `:=`(dir_A = sapply(X = route_short_name,
+                                     FUN = function(r) {
+                                       if (grepl("^[A-DF-HKL]{2}", r)) {
+                                         A <- paste0(substr(r, 1, 1), substr(r, 3, 200))
+                                       } else NA
+                                     }),
+                      dir_B = sapply(X = route_short_name,
+                                     FUN = function(r) {
+                                       if (grepl("^[A-DF-HKL]{2}", r)) {
+                                         B <- substr(r, 2, 20)
+                                       } else NA
+                                     })
+                      )
+               ]
+
+  paradas <- raw_dt[, .(parada = unique(parada))]
+  paradas[, stop_code := get_cenefa(parada)]
+
+  clean_raw_dt <- raw_dt[clean_routes, on = "ruta"
+                         ][paradas, on = "parada"
+                           ][, c("linea", "ruta", "parada") := NULL]
 
 }
