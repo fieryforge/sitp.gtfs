@@ -11,8 +11,9 @@
 #' @importFrom data.table := .I .SD %chin% .GRP .N rbindlist uniqueN
 #' @importFrom utils globalVariables
 #' @importFrom gtfstools read_gtfs
-#' @importFrom sf st_as_sf st_geometry st_distance
+#' @importFrom sf st_as_sf st_geometry st_distance st_coordinates st_crs st_bbox
 #' @importFrom osrm osrmRoute
+#' @importFrom units set_units
 #' @importFrom leaflet leaflet addTiles addMarkers addPolygons
 #'
 #' @keywords internal
