@@ -4,12 +4,11 @@
 \name{sitp.gtfs}
 \alias{sitp.gtfs}
 \alias{sitp.gtfs-package}
-\title{sitp.gtfs: Herramientas para el análisis de frecuencias de las rutas del
-sistema de buses públicos de Bogotá SITP}
+\title{sitp.gtfs: Tools for frequency analysis of the routes in Bogotá's public bus
+system SITP}
 \description{
-Funciones útiles para alaizar las frecuencias de las rutas del SITP a partir
-de los archivos de datos de validaciones de usuarios publicados por la
-empresa Transmilenio.
+Useful functions for analyzing SITP route frequencies from the user
+validation data files published by Transmilenio.
 }
 \author{
 \strong{Maintainer}: Federico Viviescas Ramírez \email{federicoviviescas@hotmail.com}

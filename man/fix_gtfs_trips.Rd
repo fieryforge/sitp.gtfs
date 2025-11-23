@@ -9,6 +9,9 @@ fix_gtfs_trips(trips)
 \arguments{
 \item{trips}{A data.table returned by \code{get_gtfs_stops()}.}
 }
+\value{
+A list of sfc objects for 'each route_id'.
+}
 \description{
 Some gtfs trips have errors with duplicated stops, for some reason not yet
 known, the last stop of the trip is linked to the first stop creating a loop
