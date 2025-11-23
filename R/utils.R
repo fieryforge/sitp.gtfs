@@ -200,7 +200,7 @@ get_cenefa <- function(parada_vector) {
   )
 }
 
-plot_route <- function(r1, r2 = NULL) {
+plot_raw_points <- function(r1, r2 = NULL) {
   dev.new(width = 12, height = 12)
   x1 <- r1[, stop_lon[-c(1, length(stop_lon))]]
   y1 <- r1[, stop_lat[-c(1, length(stop_lat))]]
@@ -223,6 +223,70 @@ plot_route <- function(r1, r2 = NULL) {
   text(x = x2[1], y = y2[1], adj = c(-0.4, 0))
 
 }
+
+#' Plot sfc objects
+#'
+#' @param sfc_object An sf sfc object.
+plot_sfc <- function(sfc_object) {
+  route_id <- sfc_object$route_id[1]
+  route_sn <- sfc_object$route_short_name[1]
+# Get coordinates
+  coords <- sf::st_coordinates(sfc_object)
+
+# Get CRS information
+  crs_info <- sf::st_crs(sfc_object)
+
+  plot.default(
+    coords[,1], coords[,2],
+    xlab = ifelse(crs_info$epsg == 4326, "Longitude", "X"),
+    ylab = ifelse(crs_info$epsg == 4326, "Latitude", "Y"),
+    main = paste("Ruta -", route_id, "/", route_sn),
+    pch = 16,
+    col = "purple",
+    type = "o",
+    asp = 1
+  )
+  # Add grid for reference
+  grid()
+
+  # Optionally add point labels if you have IDs
+  text(coords[,1], coords[,2], labels = 1:nrow(coords),
+       pos = 3, cex = 0.7, col = "darkgray")
+
+  st_scale_bar_custom(sfc_object, size_km = 1)
+
+}
+
+#' Make scale bar for plots
+#'
+#' @param sfc_object An sf sfc object.
+st_scale_bar_custom <- function(sf_object, pos = "bottomleft", size_km = 1) {
+  bbox <- sf::st_bbox(sf_object)
+
+  # Calculate positions based on chosen location
+  if (pos == "bottomleft") {
+    x_start <- bbox["xmin"] + 0.05 * (bbox["xmax"] - bbox["xmin"])
+    y_pos <- bbox["ymin"] + 0.05 * (bbox["ymax"] - bbox["ymin"])
+  } else if (pos == "bottomright") {
+    x_start <- bbox["xmax"] - 0.15 * (bbox["xmax"] - bbox["xmin"])
+    y_pos <- bbox["ymin"] + 0.05 * (bbox["ymax"] - bbox["ymin"])
+  }
+
+  # Calculate appropriate length for 1 km based on CRS
+  crs <- sf::st_crs(sf_object)
+  if (crs$epsg == 4326) {
+    # Geographic CRS - approximate conversion
+    km_length <- 0.009  # Roughly 1 km at equator
+  } else {
+    # Projected CRS - use meters directly
+    km_length <- 1000 / crs$ud_unit  # This would need adjustment
+  }
+
+  # Draw the scale bar
+  segments(x_start, y_pos, x_start + km_length, y_pos, lwd = 3)
+  text(x_start + km_length/2, y_pos, paste(size_km, "km"), pos = 3)
+}
+
 
 #' Get get_clean_gtfs_shapes
 #'
@@ -301,4 +365,32 @@ clean_raw_dt <- function(raw_dt) {
                          ][paradas, on = "parada"
                            ][, c("linea", "ruta", "parada") := NULL]
 
+}
+
+get_trip_by_stops <- function(trips, clean_dt) {
+  common_routes <- intersect(trips$route_short_name, clean_dt$route_short_name)
+  # one way trips
+  one_way_routes <- clean_dt[common_routes, on = "route_short_name"
+                             ][is.na(dir_A), unique(route_short_name)]
+
+  # list one way routes
+  lapply(X = one_way_routes,
+         FUN = function(r) {
+           trip_gtfs <- trips[r, on = "route_short_name"]
+           trips_val <- clean_dt[r, on = "route_short_name"
+                                 ][, .SD, keyby = bus_id]
+
+           trip_by_bus <- lapply(
+             X = unique(trips_val$bus_id),
+             FUN = function(b) {
+               trips_val[b, on = "bus_id"
+                         ][order(t_stamp)
+                           ][trip_gtfs[!duplicated(stop_id)], #TODO fix_gtfs_trips.R
+                             on = c("stop_code", "route_short_name")
+                             ][, bus_id := b]
+               #TODO number trips by bus
+             })
+
+           trips <- rbindlist(trip_by_bus)
+         })
 }
