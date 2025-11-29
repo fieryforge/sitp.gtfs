@@ -17,6 +17,7 @@ fix_gtfs_trips <- function(trips) {
                        sfc_route_clean <- remove_head_tail(sfc_route)
                      })
 
+  sf_trips <- data.table::rbindlist(sf_trips)
 }
 
 #' Remove the first or last point in route on condition
@@ -24,7 +25,9 @@ fix_gtfs_trips <- function(trips) {
 #' @param sfc_route An sf sfc route object.
 #' @return The input object with points removed if condition met.
 remove_head_tail <- function(sfc_route) {
+  # distance pt 1 - pt 2
   head_distance <- st_distance(sfc_route[1, ], sfc_route[2, ])
+  # distance pt n - pt n-1
   tail_distance <- st_distance(sfc_route[nrow(sfc_route), ], sfc_route[nrow(sfc_route) - 1, ])
 
   distance_difference <- abs(head_distance - tail_distance)
@@ -32,15 +35,15 @@ remove_head_tail <- function(sfc_route) {
 
   if (distance_difference > distance_threshold) {
     if (head_distance > tail_distance) {
+      # remove pt 1
       sfc_route <- sfc_route[-1, ]
       sfc_route$stop_sequence <- seq(nrow(sfc_route))
-      message("Removed first point on route: ", sfc_route$route_id[1], " distance diffence = ", distance_difference)
     } else {
+      # remove pt n
       sfc_route <- sfc_route[-nrow(sfc_route), ]
-      message("Removed last point on route: ", sfc_route$route_id[1], " distance diffence = ", distance_difference)
     }
   } else {
-    message("No points removed on route: ", sfc_route$route_id[1])
+    # keep all points
     sfc_route
   }
 
