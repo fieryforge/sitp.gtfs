@@ -62,31 +62,55 @@
 #' @export
 map_stops_to_route_id <- function(date, val_file_path, gtfs_path) {
   # load validation file
-  raw_dt <- load_val_routes(date = date,
-                            val_file_path = val_file_path)
+  t <- system.time(
+    raw_dt <- load_val_routes(date = date,
+                              val_file_path = val_file_path)
+  )
+  message("load_val_routes() time: ", t[3])
+
+  clean_dt <- clean_raw_dt(raw_dt)
 
   # a list of data.tables each with a route and its stops to match against the
   # GTFS file
-  stops_by_route <- get_unique_stops_by_route(raw_dt)
+  t <- system.time(
+    stops_by_route <- get_unique_stops_by_route(raw_dt)
+  )
+  message("stops_by_route() time: ", t[3])
 
   # a vector with all GTFS file paths available for the validation file's date
   gtfs_to_unzip <- gtfs_to_unzip(date = date,
                                  gtfs_path =  gtfs_path)
 
   gtfs <- read_gtfs_by_date(gtfs_zip = gtfs_to_unzip,
-                           gtfs_files = "routes")
+                            gtfs_files = "routes")
 
   # find route matches in gtfs files
   gtfs_routes <- match_routes_in_gtfs(rutas = stops_by_route,
-                                     gtfs = gtfs)
+                                      gtfs = gtfs)
 
   # find the longest gtfs trips for routes matched in gtfs
-  gtfs_trips <- find_gtfs_trips(routes =  gtfs_routes,
-                                gtfs_path = gtfs_path)
+  t <- system.time(
+    gtfs_trips <- find_gtfs_trips(routes =  gtfs_routes,
+                                  gtfs_path = gtfs_path)
+  )
+  message("find_gtfs_trips(), time :", t[3])
 
   # get geo coordinates for the stops
-  gtfs_stops <- get_gtfs_stops(trips = gtfs_trips,
+  gtfs_trips <- get_gtfs_stops(trips = gtfs_trips,
                                gtfs_path = gtfs_path)
 
+  # remove duplicated stops from trips
+  t <- system.time(
+    gtfs_trips <- fix_gtfs_trips(gtfs_trips)
+  )
+  message("fix_gtfs_trips() time: ", t[3])
+
+  t <- system.time(
+    gtfs_trips <- get_trip_by_bus(trips = gtfs_trips,
+                                  clean_dt = clean_dt)
+  )
+  message("get_trip_by_bus() time", t[3])
+
+  return(gtfs_trips)
 
 }
