@@ -228,6 +228,7 @@ plot_raw_points <- function(r1, r2 = NULL) {
 #'
 #' @param sfc_object An sf sfc object.
 plot_sfc <- function(sfc_object) {
+  dev.new(width = 12, height = 12)
   route_id <- sfc_object$route_id[1]
   route_sn <- sfc_object$route_short_name[1]
 # Get coordinates
@@ -367,30 +368,59 @@ clean_raw_dt <- function(raw_dt) {
 
 }
 
-get_trip_by_stops <- function(trips, clean_dt) {
-  common_routes <- intersect(trips$route_short_name, clean_dt$route_short_name)
+get_trip_by_bus <- function(trips, clean_dt) {
   # one way trips
-  one_way_routes <- clean_dt[common_routes, on = "route_short_name"
+  one_way_routes <- intersect(trips$route_short_name, clean_dt$route_short_name)
+  one_way_routes <- clean_dt[one_way_routes, on = "route_short_name"
                              ][is.na(dir_A), unique(route_short_name)]
 
+  double_way_routes <- intersect(trips$route_short_name, clean_dt[!is.na(dir_A), dir_A])
+  double_way_routes <- clean_dt[double_way_routes, on = "dir_A"
+                                ][!is.na(dir_A), unique(dir_A)]
+
   # list one way routes
-  lapply(X = one_way_routes,
-         FUN = function(r) {
-           trip_gtfs <- trips[r, on = "route_short_name"]
-           trips_val <- clean_dt[r, on = "route_short_name"
-                                 ][, .SD, keyby = bus_id]
+  one_way_trips <- lapply(
+    X = one_way_routes,
+    FUN = function(r) {
+      trip_gtfs <- trips[r, on = "route_short_name"]
+      trips_val <- clean_dt[r, on = "route_short_name"
+                            ][order(t_stamp)]
+      data.table::setkey(trips_val, bus_id)
 
-           trip_by_bus <- lapply(
-             X = unique(trips_val$bus_id),
-             FUN = function(b) {
-               trips_val[b, on = "bus_id"
-                         ][order(t_stamp)
-                           ][trip_gtfs[!duplicated(stop_id)], #TODO fix_gtfs_trips.R
-                             on = c("stop_code", "route_short_name")
-                             ][, bus_id := b]
-               #TODO number trips by bus
-             })
+      trip_by_bus <- lapply(
+        X = unique(trips_val$bus_id),
+        FUN = function(b) {
+          trips_val[b, on = "bus_id"
+                    ][trip_gtfs[!duplicated(stop_code)],
+                      on = c("route_short_name", "stop_code")
+                      ][, bus_id := b]
+      #TODO number trips by bus
+        })
+      trips <- rbindlist(trip_by_bus)
+    })
 
-           trips <- rbindlist(trip_by_bus)
-         })
+  double_way_trips <- lapply(
+    X = double_way_routes,
+    FUN = function(r) {
+      trip_gtfs <- trips[r, on = "route_short_name"]
+      trips_val <- clean_dt[r, on = "dir_A"
+                            ][order(t_stamp)]
+      data.table::setnames(trips_val,
+                           old = c("route_short_name", "dir_A"),
+                           new = c("mixed_name", "route_short_name"))
+      data.table::setkey(trips_val, bus_id)
+
+      trip_by_bus <- lapply(
+        X = unique(trips_val$bus_id),
+        FUN = function(b) {
+          trips_val[b, on = "bus_id"
+                    ][trip_gtfs[!duplicated(stop_code)],
+                      on = c("route_short_name", "stop_code")
+                      ][, bus_id := b]
+      #TODO number trips by bus
+        })
+      trips <- rbindlist(trip_by_bus)
+    })
+
+  return(list(one_way_trips, double_way_trips))
 }
