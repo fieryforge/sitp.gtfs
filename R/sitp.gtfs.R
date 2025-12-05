@@ -8,13 +8,16 @@
 #' @name sitp.gtfs
 #' @aliases sitp.gtfs-package
 #'
-#' @importFrom data.table := .I .SD %chin% .GRP .N rbindlist uniqueN
+#' @importFrom data.table := .I .SD %chin% .GRP .N rbindlist uniqueN as.data.table
 #' @importFrom utils globalVariables
 #' @importFrom gtfstools read_gtfs
 #' @importFrom sf st_as_sf st_geometry st_distance st_coordinates st_crs st_bbox
 #' @importFrom osrm osrmRoute
 #' @importFrom units set_units
 #' @importFrom leaflet leaflet addTiles addMarkers addPolygons
+#' @importFrom curl new_handle handle_setheaders handle_setopt curl_fetch_memory
+#' @importFrom jqr jq
+#' @importFrom jsonlite stream_in
 #'
 #' @keywords internal
 "_PACKAGE"
