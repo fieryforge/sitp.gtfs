@@ -11,8 +11,12 @@ RoxygenNote: 7.3.3
 Imports:
     data.table,
     gtfstools,
+    sf,
     osrm,
-    leaflet
+    leaflet,
+    curl,
+    jqr,
+    jsonlite
 Depends: 
     R (>= 3.5)
 LazyData: true
