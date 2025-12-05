@@ -105,12 +105,12 @@ map_stops_to_route_id <- function(date, val_file_path, gtfs_path) {
   )
   message("fix_gtfs_trips() time: ", t[3])
 
+  return(gtfs_trips)
   t <- system.time(
-    gtfs_trips <- get_trip_by_bus(trips = gtfs_trips,
+    gtfs_trips <- new_get_trip_by_bus(trips = gtfs_trips,
                                   clean_dt = clean_dt)
   )
   message("get_trip_by_bus() time", t[3])
 
-  return(gtfs_trips)
 
 }
