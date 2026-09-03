@@ -84,13 +84,19 @@
 #'
 #' @source "https://www.tullaveplus.gov.co/planea-tu-viaje/frecuencias-y-horarios"
 #'
-#' @format A data table with six variables and 374 rows:
+#' @format A data table with 12 variables and 374 rows:
 #' \describe{
 #'    \item{id.linea}{Route id code}
-#'    \item{tipo}{Route type: one of urbano, complementario o especial}
 #'    \item{linea}{line name}
-#'    \item{nombre}{Route names in long format as found in a raw data file}
+#'    \item{ruta}{Route names in long format as found in a raw data file}
+#'    \item{ruta_cln}{Route names in long format without the rubish}
+#'    \item{tipo}{Route type: one of urbano, complementario o especial}
 #'    \item{destino}{Route origin and destination}
+#'    \item{h_pico}{Number of buses in route at rush hour}
+#'    \item{h_valle}{Number of buses in route at non rush hour}
+#'    \item{operacion}{Route's schedule by day of the week}
+#'    \item{desde}{Schedule route's first departure}
+#'    \item{hasta}{Schedule route's last  departure}
 #'    \item{paradas}{Bus stops address}
 #' }
 "rts_tullave"
